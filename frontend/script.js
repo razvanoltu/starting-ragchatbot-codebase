@@ -1,6 +1,18 @@
 // API base URL - use relative path to work from any host
 const API_URL = '/api';
 
+// Configure marked to open all links in a new tab
+// marked v5+ passes a token object; older versions pass (href, title, text)
+const markedRenderer = new marked.Renderer();
+markedRenderer.link = function(token) {
+    const href = typeof token === 'object' ? token.href : token;
+    const title = typeof token === 'object' ? token.title : arguments[1];
+    const text = typeof token === 'object' ? token.text : arguments[2];
+    const titleAttr = title ? ` title="${title}"` : '';
+    return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+};
+marked.setOptions({ renderer: markedRenderer });
+
 // Global state
 let currentSessionId = null;
 
@@ -16,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
     
+    document.getElementById('newChatBtn').addEventListener('click', createNewSession);
     setupEventListeners();
     createNewSession();
     loadCourseStats();
@@ -125,7 +138,12 @@ function addMessage(content, type, sources = null, isWelcome = false) {
         html += `
             <details class="sources-collapsible">
                 <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
+                <div class="sources-content">${sources.map(s => {
+                    if (s.url) {
+                        return `<a href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.label)}</a>`;
+                    }
+                    return `<span>${escapeHtml(s.label)}</span>`;
+                }).join('')}</div>
             </details>
         `;
     }
@@ -147,6 +165,13 @@ function escapeHtml(text) {
 // Removed removeMessage function - no longer needed since we handle loading differently
 
 async function createNewSession() {
+    if (currentSessionId) {
+        try {
+            await fetch(`${API_URL}/session/${currentSessionId}`, { method: 'DELETE' });
+        } catch (e) {
+            // best-effort cleanup, ignore errors
+        }
+    }
     currentSessionId = null;
     chatMessages.innerHTML = '';
     addMessage('Welcome to the Course Materials Assistant! I can help you with questions about courses, lessons and specific content. What would you like to know?', 'assistant', null, true);
