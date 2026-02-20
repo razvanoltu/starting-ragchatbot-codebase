@@ -1,0 +1,13 @@
+{
+    "name": "course-materials-assistant-frontend",
+    "version": "1.0.0",
+    "description": "Frontend for the Course Materials Assistant RAG chatbot",
+    "scripts": {
+        "format": "prettier --write \"**/*.{js,css,html}\"",
+        "format:check": "prettier --check \"**/*.{js,css,html}\"",
+        "lint": "npm run format:check"
+    },
+    "devDependencies": {
+        "prettier": "^3.4.2"
+    }
+}
