@@ -1,6 +1,76 @@
 // API base URL - use relative path to work from any host
 const API_URL = '/api';
 
+// ─── Theme Management ────────────────────────────────────────────────────────
+// Runs as an IIFE so the correct theme is applied before first paint,
+// preventing a flash of the wrong colour scheme.
+const Theme = (() => {
+    const STORAGE_KEY = 'theme';
+    const LIGHT = 'light';
+    const html = document.documentElement;
+
+    /** Resolve starting theme: saved preference → OS preference → dark */
+    function getInitial() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return saved;
+        return window.matchMedia('(prefers-color-scheme: light)').matches ? LIGHT : 'dark';
+    }
+
+    /** Write the theme attribute (or remove it for dark, the default). */
+    function apply(theme) {
+        if (theme === LIGHT) {
+            html.setAttribute('data-theme', LIGHT);
+        } else {
+            html.removeAttribute('data-theme');
+        }
+    }
+
+    /** Return the currently active theme name. */
+    function current() {
+        return html.getAttribute('data-theme') === LIGHT ? LIGHT : 'dark';
+    }
+
+    /**
+     * Flip to the opposite theme, persist the choice, and return the new value.
+     * A brief `theme-transitioning` class is added to <html> for the duration of
+     * the CSS transition so callers can react if needed.
+     */
+    function toggle() {
+        const next = current() === LIGHT ? 'dark' : LIGHT;
+        html.classList.add('theme-transitioning');
+        apply(next);
+        localStorage.setItem(STORAGE_KEY, next);
+        // Remove the helper class after the longest transition completes (300 ms)
+        setTimeout(() => html.classList.remove('theme-transitioning'), 350);
+        return next;
+    }
+
+    // Apply the resolved theme immediately — before the DOM is ready.
+    apply(getInitial());
+
+    return { toggle, current };
+})();
+
+// Wire up the toggle button once the DOM is available.
+document.addEventListener('DOMContentLoaded', () => {
+    const themeToggle = document.getElementById('themeToggle');
+
+    function syncLabel() {
+        themeToggle.setAttribute(
+            'aria-label',
+            Theme.current() === 'light' ? 'Switch to dark mode' : 'Switch to light mode'
+        );
+    }
+
+    themeToggle.addEventListener('click', () => {
+        Theme.toggle();
+        syncLabel();
+    });
+
+    // Keep the label in sync with whatever theme was restored on load.
+    syncLabel();
+});
+
 // Configure marked to open all links in a new tab
 // marked v5+ passes a token object; older versions pass (href, title, text)
 const markedRenderer = new marked.Renderer();
